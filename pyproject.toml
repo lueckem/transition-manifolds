@@ -7,8 +7,17 @@ authors = [
     { name = "Marvin Lücke" }
 ]
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "numba>=0.62.1",
+    "numpy>=2.3.5",
+    "scipy>=1.16.3",
+]
 
 [build-system]
 requires = ["uv_build>=0.9.10,<0.10.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.1",
+]
