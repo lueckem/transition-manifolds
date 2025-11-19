@@ -37,6 +37,9 @@ def test_distance_matrix_algorithms(alg, samples):
     assert np.all(distance_matrix == distance_matrix.T)  # Symmetric
 
 
+###################### DistanceMatrixGaussianMMD ##############################
+
+
 def test_convert_kernel_to_distance():
     kernel_mat = np.array([[3, 0, 0], [2, 4, 0], [1, 2, 5]])
     distance_mat = np.array([[0, 3, 6], [3, 0, 5], [6, 5, 0]])
