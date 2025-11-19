@@ -23,6 +23,7 @@ class DistanceMatrixGaussianMMD:
         mode: Either "u-statistic" for quadratic complexity but more precise estimation or "standard" for standard sample mean with linear complexity but less accuracy.
     """
 
+    # TODO:: make bandwidth optional with automatic estimation
     def __init__(
         self, bandwidth: float, mode: Literal["standard", "u-stat"] = "standard"
     ):
