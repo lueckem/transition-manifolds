@@ -1,0 +1,14 @@
+[project]
+name = "transitionmanifolds"
+version = "0.1.0"
+description = "Transition manifold computation for collective variable discovery"
+readme = "README.md"
+authors = [
+    { name = "Marvin Lücke" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.9.10,<0.10.0"]
+build-backend = "uv_build"
