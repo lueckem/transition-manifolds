@@ -1,2 +1,3 @@
 from .distance_matrix import DistanceMatrixAlgorithm, DistanceMatrixGaussianMMD
 from .embedding import DiffusionMaps, EmbeddingAlgorithm
+from .transition_manifold import compute_transition_manifold
