@@ -2,7 +2,9 @@ from typing import Literal
 
 import numpy as np
 from numba import njit, prange
+from numpy.random import default_rng
 from numpy.typing import NDArray
+from scipy.spatial.distance import pdist
 
 
 class DistanceMatrixGaussianMMD:
@@ -18,26 +20,73 @@ class DistanceMatrixGaussianMMD:
     and `k` is the Gaussian kernel
     ``k(x_i, y_j) = exp(-||x_i - y_j||^2 / sigma^2)``.
 
+    After the computation, the following extra information is available as class attributes:
+    - `bandwidth_`: Bandwidth that was used in the Gaussian kernel.
+
     Attributes:
-        bandwidth: Bandwidth of the Gaussian kernel.
+        bandwidth: Bandwidth of the Gaussian kernel. If `None`, a reasonable bandwidth is estimated from the data.
         mode: Either "u-statistic" for quadratic complexity but more precise estimation or "standard" for standard sample mean with linear complexity but less accuracy.
     """
 
-    # TODO:: make bandwidth optional with automatic estimation
     def __init__(
-        self, bandwidth: float, mode: Literal["standard", "u-stat"] = "standard"
+        self,
+        bandwidth: float | None = None,
+        mode: Literal["standard", "u-stat"] = "standard",
     ):
         self.bandwidth = bandwidth
         self.mode = mode
 
     def __call__(self, data: NDArray) -> NDArray:
+        self.bandwidth_ = (
+            self.bandwidth
+            if self.bandwidth is not None
+            else subsample_and_tune_bandwidth(data)
+        )
+
         d = (
-            compute_kernel_matrix_standard(data, self.bandwidth)
+            compute_kernel_matrix_standard(data, self.bandwidth_)
             if self.mode == "standard"
-            else compute_kernel_matrix_u(data, self.bandwidth)
+            else compute_kernel_matrix_u(data, self.bandwidth_)
         )
         convert_kernel_to_distance(d)
         return d
+
+
+def subsample_and_tune_bandwidth(data: NDArray, num_points: int = 100) -> float:
+    """Choose random points from data and estimate bandwidth for Gaussian kernel.
+
+    Args:
+        num_points: How many points to use for bandwidth estimation.
+        data: `shape = (num_anchors, num_samples, d)`
+
+    Returns:
+        bandwidth
+    """
+    d = data.shape[2]
+    rng = default_rng(123)
+    points = rng.choice(np.reshape(data, (-1, d)), num_points, replace=False)
+    return tune_bandwidth_to_data(points)
+
+
+def tune_bandwidth_to_data(data: NDArray) -> float:
+    """Estimate reasonable bandwidth of Gaussian kernel for data.
+
+    The bandwidth is chosen such that the Gaussian kernel has the value 0.01
+    at the 95% largest distance in the data.
+
+    Args:
+        data: `shape = (num_points, d)`
+
+    Returns:
+        bandwidth
+    """
+    quant = 0.95
+    val_at_quant = 0.01
+
+    pairwise_sqeucl = pdist(data, metric="sqeuclidean")
+    q = np.quantile(pairwise_sqeucl, quant)
+    bandwidth = np.sqrt(-q / np.log(val_at_quant))
+    return bandwidth
 
 
 @njit(cache=True)

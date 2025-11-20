@@ -1,12 +1,14 @@
 import numpy as np
 import pytest
 from numpy.random import default_rng
+from scipy.spatial.distance import pdist
 
 from transitionmanifolds import DistanceMatrixGaussianMMD
 from transitionmanifolds.distance_matrix.mmd import (
     convert_kernel_to_distance,
     gaussian_kernel_eval_standard,
     gaussian_kernel_eval_u,
+    tune_bandwidth_to_data,
 )
 
 
@@ -27,6 +29,7 @@ def samples():
     [
         (DistanceMatrixGaussianMMD(1, "standard")),
         (DistanceMatrixGaussianMMD(1, "u-stat")),
+        (DistanceMatrixGaussianMMD()),
     ],
 )
 def test_distance_matrix_algorithms(alg, samples):
@@ -77,3 +80,10 @@ def test_gaussian_kernel_eval_standard():
         ]
     )
     assert np.allclose(np.mean(kernel), gaussian_kernel_eval_standard(x, y, sigma))
+
+
+def test_tune_bandwidth():
+    points = np.random.default_rng(123).random((10, 3))
+    bandwidth = tune_bandwidth_to_data(points)
+    kernel_evals = np.exp(-pdist(points, metric="sqeuclidean") / bandwidth**2)
+    assert np.isclose(np.quantile(kernel_evals, 0.05), 0.01, atol=0.001)
