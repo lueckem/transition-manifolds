@@ -55,7 +55,7 @@ mmd = tm.DistanceMatrixGaussianMMD()
 diffusion_maps = tm.DiffusionMaps()
 num_coords = 3  # 3-dimensional embedding
 coords = tm.compute_transition_manifold(
-    x_samples,
+    samples,
     num_coords,
     distance_matrix_algorithm=mmd,
     embedding_algorithm=diffusion_maps,
