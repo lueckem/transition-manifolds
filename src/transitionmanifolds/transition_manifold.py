@@ -1,14 +1,17 @@
 from numpy.typing import NDArray
 
-from transitionmanifolds.distance_matrix.distance_matrix import DistanceMatrixAlgorithm
-from transitionmanifolds.embedding.embedding import EmbeddingAlgorithm
+from transitionmanifolds.distance_matrix import (
+    DistanceMatrixAlgorithm,
+    DistanceMatrixGaussianMMD,
+)
+from transitionmanifolds.embedding import DiffusionMaps, EmbeddingAlgorithm
 
 
 def compute_transition_manifold(
     data: NDArray,
     num_coordinates: int,
-    distance_matrix_algorithm: DistanceMatrixAlgorithm,
-    embedding_algorithm: EmbeddingAlgorithm,
+    distance_matrix_algorithm: DistanceMatrixAlgorithm = DistanceMatrixGaussianMMD(),
+    embedding_algorithm: EmbeddingAlgorithm = DiffusionMaps(),
 ) -> NDArray:
     """Compute the transition manifold for the given data.
 
