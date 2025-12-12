@@ -218,7 +218,7 @@ def gaussian_kernel_eval_u(x: NDArray, y: NDArray, sigma: float) -> float:
     return np.mean(out)
 
 
-@njit(cache=True)
+@njit(cache=True, fastmath=True)
 def gaussian_kernel_eval_diag(x: NDArray, sigma: float) -> float:
     """Estimate `E[k(X,X)]` from samples x using the u-statistic.
 
@@ -230,15 +230,16 @@ def gaussian_kernel_eval_diag(x: NDArray, sigma: float) -> float:
         x: `shape = (m, d)`
         sigma: bandwidth
     """
-    nx = x.shape[0]
+    nx, d = x.shape
+    out = 0.0
+    inv_sigma_sq = -1.0 / (sigma * sigma)
 
-    X = np.sum(x * x, axis=1).reshape((nx, 1)) * np.ones((1, nx))
-    Y = np.sum(x * x, axis=1) * np.ones((nx, 1))
-    out = X + Y - 2 * np.dot(x, x.T)
-    out /= -(sigma**2)
-    np.exp(out, out)
+    for i in range(nx):
+        for j in range(i):
+            dist_sq = 0.0
+            for k in range(d):
+                diff = x[i, k] - x[j, k]
+                dist_sq += diff * diff
+            out += np.exp(dist_sq * inv_sigma_sq)
 
-    # The diagonal entries have to be removed because they contain k(x_i, x_i) = 1.
-    for i in range(out.shape[0]):
-        out[i, i] = 0
-    return np.sum(out) / (nx**2 - nx)
+    return out / (nx * nx - nx) * 2
