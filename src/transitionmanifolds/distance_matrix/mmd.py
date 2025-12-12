@@ -110,6 +110,7 @@ def convert_kernel_to_distance(kernel_matrix: NDArray) -> None:
     for i in range(num_anchors):
         for j in range(i):
             value = kernel_matrix[i, i] + kernel_matrix[j, j] - 2 * kernel_matrix[i, j]
+            value = abs(value)
             kernel_matrix[i, j] = value
             kernel_matrix[j, i] = value
 
@@ -135,7 +136,10 @@ def compute_kernel_matrix_standard(x_samples: NDArray, sigma: float) -> NDArray:
 
     kernel_matrix = np.zeros((num_anchors, num_anchors))
     for i in prange(num_anchors):
-        for j in range(i + 1):
+        kernel_matrix[i, i] = gaussian_kernel_eval_diag(x_samples[i], sigma)
+
+    for i in prange(num_anchors):
+        for j in range(i):
             kernel_matrix[i, j] = gaussian_kernel_eval_standard(
                 x_samples[i], x_samples[j], sigma
             )
@@ -160,7 +164,10 @@ def compute_kernel_matrix_u(x_samples: NDArray, sigma: float) -> NDArray:
 
     kernel_matrix = np.zeros((num_anchors, num_anchors))
     for i in prange(num_anchors):
-        for j in range(i + 1):
+        kernel_matrix[i, i] = gaussian_kernel_eval_diag(x_samples[i], sigma)
+
+    for i in prange(num_anchors):
+        for j in range(i):
             kernel_matrix[i, j] = gaussian_kernel_eval_u(
                 x_samples[i], x_samples[j], sigma
             )
@@ -209,3 +216,29 @@ def gaussian_kernel_eval_u(x: NDArray, y: NDArray, sigma: float) -> float:
     out /= -(sigma**2)
     np.exp(out, out)
     return np.mean(out)
+
+
+@njit(cache=True)
+def gaussian_kernel_eval_diag(x: NDArray, sigma: float) -> float:
+    """Estimate `E[k(X,X)]` from samples x using the u-statistic.
+
+    Calculates ``1/(m^2-m)/2 Sum_{i<j} k(x_i, y_j)``,
+    where `k` is the gaussian kernel with bandwidth `sigma`, i.e.,
+    ``k(x_i, y_j) = exp(-||x_i - y_j||^2 / sigma^2)``.
+
+    Args:
+        x: `shape = (m, d)`
+        sigma: bandwidth
+    """
+    nx = x.shape[0]
+
+    X = np.sum(x * x, axis=1).reshape((nx, 1)) * np.ones((1, nx))
+    Y = np.sum(x * x, axis=1) * np.ones((nx, 1))
+    out = X + Y - 2 * np.dot(x, x.T)
+    out /= -(sigma**2)
+    np.exp(out, out)
+
+    # The diagonal entries have to be removed because they contain k(x_i, x_i) = 1.
+    for i in range(out.shape[0]):
+        out[i, i] = 0
+    return np.sum(out) / (nx**2 - nx)
