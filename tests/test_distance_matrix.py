@@ -1,3 +1,5 @@
+from sre_compile import dis
+
 import numpy as np
 import pytest
 from numpy.random import default_rng
@@ -87,3 +89,15 @@ def test_tune_bandwidth():
     bandwidth = tune_bandwidth_to_data(points)
     kernel_evals = np.exp(-pdist(points, metric="sqeuclidean") / bandwidth**2)
     assert np.isclose(np.quantile(kernel_evals, 0.05), 0.01, atol=0.001)
+
+
+def test_convergence_to_0_standard():
+    points = np.random.default_rng(123).random((2, 1000, 2))
+    distance_mat = DistanceMatrixGaussianMMD(0.3, "standard")(points)
+    assert distance_mat[1, 0] < 0.001
+
+
+def test_convergence_to_0_ustat():
+    points = np.random.default_rng(123).random((2, 1000, 2))
+    distance_mat = DistanceMatrixGaussianMMD(0.3, "u-stat")(points)
+    assert distance_mat[1, 0] < 0.001
