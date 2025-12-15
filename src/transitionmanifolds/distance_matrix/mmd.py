@@ -46,9 +46,9 @@ class DistanceMatrixGaussianMMD:
         )
 
         d = (
-            compute_kernel_matrix_standard(data, self.bandwidth_)
+            compute_kernel_matrix_standard(data.astype(np.float32), self.bandwidth_)
             if self.mode == "standard"
-            else compute_kernel_matrix_u(data, self.bandwidth_)
+            else compute_kernel_matrix_u(data.astype(np.float32), self.bandwidth_)
         )
         convert_kernel_to_distance(d)
         return d
@@ -147,7 +147,7 @@ def compute_kernel_matrix_standard(x_samples: NDArray, sigma: float) -> NDArray:
     return kernel_matrix
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True)
 def compute_kernel_matrix_u(x_samples: NDArray, sigma: float) -> NDArray:
     """Compute matrix K with `K_ij = E[k(x[i], x[j])]`.
 
@@ -194,7 +194,7 @@ def gaussian_kernel_eval_standard(x: NDArray, y: NDArray, sigma: float) -> float
     return np.mean(out)
 
 
-@njit(fastmath=True, parallel=True, cache=True)
+@njit(fastmath=True, parallel=True)
 def gaussian_kernel_eval_u(x: NDArray, y: NDArray, sigma: float) -> float:
     """Estimate `E[k(X,Y)]` from samples x and y using the u-statistic.
 
@@ -253,7 +253,7 @@ def gaussian_kernel_eval_diag_standard(x: NDArray, sigma: float) -> float:
     return out / (nx - 1)
 
 
-@njit(cache=True, fastmath=True, parallel=True)
+@njit(fastmath=True, parallel=True)
 def gaussian_kernel_eval_diag_u(x: NDArray, sigma: float) -> float:
     """Estimate `E[k(X,X)]` from samples x using the u-statistic.
 
