@@ -147,7 +147,7 @@ def compute_kernel_matrix_standard(x_samples: NDArray, sigma: float) -> NDArray:
     return kernel_matrix
 
 
-@njit(parallel=True, fastmath=True)
+@njit(fastmath=True, cache=True)
 def compute_kernel_matrix_u(x_samples: NDArray, sigma: float) -> NDArray:
     """Compute matrix K with `K_ij = E[k(x[i], x[j])]`.
 
@@ -163,12 +163,11 @@ def compute_kernel_matrix_u(x_samples: NDArray, sigma: float) -> NDArray:
     num_anchors = x_samples.shape[0]
 
     kernel_matrix = np.zeros((num_anchors, num_anchors))
-    with parallel_chunksize(4):
-        for i in prange(num_anchors):
-            for j in range(i + 1):
-                kernel_matrix[i, j] = gaussian_kernel_eval_u(
-                    x_samples[i], x_samples[j], sigma
-                )
+    for i in range(num_anchors):
+        for j in range(i + 1):
+            kernel_matrix[i, j] = gaussian_kernel_eval_u(
+                x_samples[i], x_samples[j], sigma
+            )
 
     return kernel_matrix
 
@@ -192,7 +191,7 @@ def gaussian_kernel_eval_standard(x: NDArray, y: NDArray, sigma: float) -> float
     return np.mean(out)
 
 
-@njit(fastmath=True)
+@njit(fastmath=True, parallel=True, cache=True)
 def gaussian_kernel_eval_u(x: NDArray, y: NDArray, sigma: float) -> float:
     """Estimate `E[k(X,Y)]` from samples x and y using the u-statistic.
 
@@ -222,13 +221,15 @@ def gaussian_kernel_eval_u(x: NDArray, y: NDArray, sigma: float) -> float:
     out = 0.0
     inv_sigma_sq = -1.0 / (sigma * sigma)
 
-    for i in range(nx):
+    for i in prange(nx):
+        out_i = 0.0
         for j in range(ny):
             dist_sq = 0.0
             for k in range(d):
                 diff = x[i, k] - y[j, k]
                 dist_sq += diff * diff
-            out += np.exp(dist_sq * inv_sigma_sq)
+            out_i += np.exp(dist_sq * inv_sigma_sq)
+        out += out_i
 
     return out / (nx * ny)
 
