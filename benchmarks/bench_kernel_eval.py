@@ -5,18 +5,36 @@ from numpy.random import default_rng
 
 import transitionmanifolds as tm
 
-nx = 1000
-d = 1000
-sigma = (d / 2.0) ** 0.5
-num_samples = 100
-rng = default_rng(123)
-x = np.random.random((nx, d))
 
-print(tm.distance_matrix.mmd.gaussian_kernel_eval_diag(x, sigma))
+def print_size(num_anchors, num_samples, d, bytes_per):
+    size_per_anchor = bytes_per * d * num_samples
+    print(f"Total size: {size_per_anchor * num_anchors / 10**6} mb")
+    print(f"Size per anchor: {size_per_anchor / 10**3} kb")
+    print(f"Size per sample: {bytes_per * d / 10**3} kb")
 
-start = perf_counter()
-for _ in range(num_samples):
-    tm.distance_matrix.mmd.gaussian_kernel_eval_diag(x, sigma)
-end = perf_counter()
-duration = (end - start) / num_samples
-print(f"Took {duration:.4f} seconds")
+
+def bench_u_f32():
+    num_anchors = 200
+    num_samples = 400
+    d = 1000
+    sigma = (d / 2.0) ** 0.5
+
+    print_size(num_anchors, num_samples, d, 4)
+
+    rng = default_rng(123)
+    x = rng.random((num_anchors, num_samples, d), dtype=np.float32)
+
+    # compilation
+    tm.distance_matrix.mmd.compute_kernel_matrix_u(x[:2, :10, :10], sigma)
+
+    start = perf_counter()
+    k = tm.distance_matrix.mmd.compute_kernel_matrix_u(x, sigma)
+    end = perf_counter()
+    print(k[1, 0])
+    duration = end - start
+    print(f"Took {duration:.4f} seconds")
+    # Took 57.4142 seconds
+
+
+if __name__ == "__main__":
+    bench_u_f32()
