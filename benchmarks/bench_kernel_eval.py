@@ -23,6 +23,7 @@ def bench_u_f32():
 
     rng = default_rng(123)
     x = rng.random((num_anchors, num_samples, d), dtype=np.float32)
+    print(x.shape)
 
     # compilation
     tm.distance_matrix.mmd.compute_kernel_matrix_u(x[:2, :10, :10], sigma)
@@ -60,5 +61,5 @@ def bench_u_i8():
 
 
 if __name__ == "__main__":
-    # bench_u_f32()
-    bench_u_i8()
+    bench_u_f32()
+    # bench_u_i8()

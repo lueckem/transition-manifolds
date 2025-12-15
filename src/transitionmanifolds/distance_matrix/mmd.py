@@ -257,10 +257,6 @@ def gaussian_kernel_eval_diag_standard(x: NDArray, sigma: float) -> float:
 def gaussian_kernel_eval_diag_u(x: NDArray, sigma: float) -> float:
     """Estimate `E[k(X,X)]` from samples x using the u-statistic.
 
-    Calculates ``1/(m^2-m)/2 Sum_{i<j} k(x_i, y_j)``,
-    where `k` is the gaussian kernel with bandwidth `sigma`, i.e.,
-    ``k(x_i, y_j) = exp(-||x_i - y_j||^2 / sigma^2)``.
-
     Args:
         x: `shape = (m, d)`
         sigma: bandwidth
