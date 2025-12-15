@@ -33,7 +33,8 @@ def bench_u_f32():
     print(k[1, 0])
     duration = end - start
     print(f"Took {duration:.4f} seconds")
-    # Took 57.4142 seconds
+    # numpy: Took 57.4142 seconds
+    # loop: Took 61.0608 seconds
 
 
 if __name__ == "__main__":

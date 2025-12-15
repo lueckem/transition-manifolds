@@ -1,7 +1,7 @@
 from typing import Literal
 
 import numpy as np
-from numba import njit, prange
+from numba import njit, parallel_chunksize, prange
 from numpy.random import default_rng
 from numpy.typing import NDArray
 from scipy.spatial.distance import pdist
@@ -147,7 +147,7 @@ def compute_kernel_matrix_standard(x_samples: NDArray, sigma: float) -> NDArray:
     return kernel_matrix
 
 
-@njit(cache=True, parallel=True)
+@njit(parallel=True, fastmath=True)
 def compute_kernel_matrix_u(x_samples: NDArray, sigma: float) -> NDArray:
     """Compute matrix K with `K_ij = E[k(x[i], x[j])]`.
 
@@ -163,11 +163,12 @@ def compute_kernel_matrix_u(x_samples: NDArray, sigma: float) -> NDArray:
     num_anchors = x_samples.shape[0]
 
     kernel_matrix = np.zeros((num_anchors, num_anchors))
-    for i in prange(num_anchors):
-        for j in range(i + 1):
-            kernel_matrix[i, j] = gaussian_kernel_eval_u(
-                x_samples[i], x_samples[j], sigma
-            )
+    with parallel_chunksize(4):
+        for i in prange(num_anchors):
+            for j in range(i + 1):
+                kernel_matrix[i, j] = gaussian_kernel_eval_u(
+                    x_samples[i], x_samples[j], sigma
+                )
 
     return kernel_matrix
 
@@ -191,7 +192,7 @@ def gaussian_kernel_eval_standard(x: NDArray, y: NDArray, sigma: float) -> float
     return np.mean(out)
 
 
-@njit(cache=True)
+@njit(fastmath=True)
 def gaussian_kernel_eval_u(x: NDArray, y: NDArray, sigma: float) -> float:
     """Estimate `E[k(X,Y)]` from samples x and y using the u-statistic.
 
@@ -204,15 +205,32 @@ def gaussian_kernel_eval_u(x: NDArray, y: NDArray, sigma: float) -> float:
         y: `shape = (n, d)`
         sigma: bandwidth
     """
-    nx = x.shape[0]
-    ny = y.shape[0]
+    # nx = x.shape[0]
+    # ny = y.shape[0]
+    #
+    # X = np.sum(x * x, axis=1).reshape((nx, 1)) * np.ones((1, ny))
+    # Y = np.sum(y * y, axis=1) * np.ones((nx, 1))
+    # out = X + Y - 2 * np.dot(x, y.T)
+    # out /= -(sigma**2)
+    # np.exp(out, out)
+    # return np.mean(out)
 
-    X = np.sum(x * x, axis=1).reshape((nx, 1)) * np.ones((1, ny))
-    Y = np.sum(y * y, axis=1) * np.ones((nx, 1))
-    out = X + Y - 2 * np.dot(x, y.T)
-    out /= -(sigma**2)
-    np.exp(out, out)
-    return np.mean(out)
+    nx, dx = x.shape
+    ny, dy = y.shape
+    d = min(dx, dy)
+
+    out = 0.0
+    inv_sigma_sq = -1.0 / (sigma * sigma)
+
+    for i in range(nx):
+        for j in range(ny):
+            dist_sq = 0.0
+            for k in range(d):
+                diff = x[i, k] - y[j, k]
+                dist_sq += diff * diff
+            out += np.exp(dist_sq * inv_sigma_sq)
+
+    return out / (nx * ny)
 
 
 @njit(cache=True, fastmath=True)
