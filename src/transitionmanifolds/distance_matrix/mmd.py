@@ -1,7 +1,7 @@
 from typing import Literal
 
 import numpy as np
-from numba import njit, parallel_chunksize, prange
+from numba import njit, prange
 from numpy.random import default_rng
 from numpy.typing import NDArray
 from scipy.spatial.distance import pdist
