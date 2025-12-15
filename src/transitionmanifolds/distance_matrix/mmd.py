@@ -196,6 +196,17 @@ def gaussian_kernel_eval_standard(x: NDArray, y: NDArray, sigma: float) -> float
 
 @njit(fastmath=True, parallel=True, cache=True)
 def gaussian_kernel_eval_u(x: NDArray, y: NDArray, sigma: float) -> float:
+    """Estimate `E[k(X,Y)]` from samples x and y using the u-statistic.
+
+    Calculates ``1/(mn) Sum_{i,j} k(x_i, y_j)``,
+    where `k` is the gaussian kernel with bandwidth `sigma`, i.e.,
+    ``k(x_i, y_j) = exp(-||x_i - y_j||^2 / sigma^2)``.
+
+    Args:
+        x: `shape = (m, d)`
+        y: `shape = (n, d)`
+        sigma: bandwidth
+    """
     nx, dx = x.shape
     ny, dy = y.shape
     d = min(dx, dy)
