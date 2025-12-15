@@ -33,8 +33,6 @@ class DistanceMatrixGaussianMMD:
         bandwidth: float | None = None,
         mode: Literal["standard", "u-stat"] = "u-stat",
     ):
-        if mode == "standard":
-            raise NotImplementedError("mode=standard is broken!")
         self.bandwidth = bandwidth
         self.mode = mode
 
