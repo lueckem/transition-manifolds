@@ -147,7 +147,7 @@ def compute_kernel_matrix_standard(x_samples: NDArray, sigma: float) -> NDArray:
     return kernel_matrix
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True, cache=True, parallel=True)
 def compute_kernel_matrix_u(x_samples: NDArray, sigma: float) -> NDArray:
     """Compute matrix K with `K_ij = E[k(x[i], x[j])]`.
 
@@ -161,10 +161,13 @@ def compute_kernel_matrix_u(x_samples: NDArray, sigma: float) -> NDArray:
     Returns: kernel matrix with `shape = (num_anchors, num_anchors)`.
     """
     num_anchors = x_samples.shape[0]
-
     kernel_matrix = np.zeros((num_anchors, num_anchors))
+
+    for i in prange(num_anchors):
+        kernel_matrix[i, i] = gaussian_kernel_eval_diag_u(x_samples[i], sigma)
+
     for i in range(num_anchors):
-        for j in range(i + 1):
+        for j in range(i):
             kernel_matrix[i, j] = gaussian_kernel_eval_u(
                 x_samples[i], x_samples[j], sigma
             )
@@ -239,28 +242,30 @@ def gaussian_kernel_eval_diag_standard(x: NDArray, sigma: float) -> float:
     return out / (nx - 1)
 
 
-# @njit(cache=True, fastmath=True)
-# def gaussian_kernel_eval_diag(x: NDArray, sigma: float) -> float:
-#     """Estimate `E[k(X,X)]` from samples x using the u-statistic.
-#
-#     Calculates ``1/(m^2-m)/2 Sum_{i<j} k(x_i, y_j)``,
-#     where `k` is the gaussian kernel with bandwidth `sigma`, i.e.,
-#     ``k(x_i, y_j) = exp(-||x_i - y_j||^2 / sigma^2)``.
-#
-#     Args:
-#         x: `shape = (m, d)`
-#         sigma: bandwidth
-#     """
-#     nx, d = x.shape
-#     out = 0.0
-#     inv_sigma_sq = -1.0 / (sigma * sigma)
-#
-#     for i in range(nx):
-#         for j in range(i):
-#             dist_sq = 0.0
-#             for k in range(d):
-#                 diff = x[i, k] - x[j, k]
-#                 dist_sq += diff * diff
-#             out += np.exp(dist_sq * inv_sigma_sq)
-#
-#     return out / (nx * nx - nx) * 2
+@njit(cache=True, fastmath=True)
+def gaussian_kernel_eval_diag_u(x: NDArray, sigma: float) -> float:
+    """Estimate `E[k(X,X)]` from samples x using the u-statistic.
+
+    Calculates ``1/(m^2-m)/2 Sum_{i<j} k(x_i, y_j)``,
+    where `k` is the gaussian kernel with bandwidth `sigma`, i.e.,
+    ``k(x_i, y_j) = exp(-||x_i - y_j||^2 / sigma^2)``.
+
+    Args:
+        x: `shape = (m, d)`
+        sigma: bandwidth
+    """
+    nx, d = x.shape
+
+    out = np.float32(0.0)
+    inv_sigma_sq = np.float32(-1.0 / (sigma * sigma))
+
+    for i in range(nx):
+        for j in range(i):  # skip the diagonal entries
+            dist_sq = np.float32(0.0)
+            for k in range(d):
+                diff = np.float32(x[i, k]) - np.float32(x[j, k])
+                dist_sq += diff * diff
+            out += np.float32(2.0) * np.exp(dist_sq * inv_sigma_sq)
+
+    out += np.float32(nx)  # diagonal entries are all 1
+    return out / (nx * nx)
