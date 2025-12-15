@@ -119,11 +119,11 @@ def convert_kernel_to_distance(kernel_matrix: NDArray) -> None:
         kernel_matrix[i, i] = 0
 
 
-@njit(cache=True, parallel=True)
+@njit(fastmath=True)
 def compute_kernel_matrix_standard(x_samples: NDArray, sigma: float) -> NDArray:
     """Compute matrix K with `K_ij = E[k(x[i], x[j])]`.
 
-    K_ij is estimated via standard sample mean.
+    `K_ij` is estimated via standard sample mean.
     Since K is symmetric, the entries above the diagonal are not filled in and left to be 0.
 
     Args:
@@ -135,10 +135,10 @@ def compute_kernel_matrix_standard(x_samples: NDArray, sigma: float) -> NDArray:
     num_anchors = x_samples.shape[0]
 
     kernel_matrix = np.zeros((num_anchors, num_anchors))
-    for i in prange(num_anchors):
+    for i in range(num_anchors):
         kernel_matrix[i, i] = gaussian_kernel_eval_diag_standard(x_samples[i], sigma)
 
-    for i in prange(num_anchors):
+    for i in range(num_anchors):
         for j in range(i):
             kernel_matrix[i, j] = gaussian_kernel_eval_standard(
                 x_samples[i], x_samples[j], sigma
@@ -175,7 +175,7 @@ def compute_kernel_matrix_u(x_samples: NDArray, sigma: float) -> NDArray:
     return kernel_matrix
 
 
-@njit(cache=True)
+@njit(fastmath=True, parallel=True)
 def gaussian_kernel_eval_standard(x: NDArray, y: NDArray, sigma: float) -> float:
     """Estimate ``E[k(X,Y)]`` from samples x and y using the standard sample mean.
 
@@ -188,10 +188,21 @@ def gaussian_kernel_eval_standard(x: NDArray, y: NDArray, sigma: float) -> float
         y: `shape = (n, d)`
         sigma: bandwidth
     """
-    out = np.sum((x - y) ** 2, axis=1)
-    out /= -(sigma**2)
-    np.exp(out, out)
-    return np.mean(out)
+    nx, dx = x.shape
+    ny, dy = y.shape
+    d = min(dx, dy)
+    n = min(nx, ny)
+
+    out = np.float32(0.0)
+    inv_sigma_sq = np.float32(-1.0 / (sigma * sigma))
+
+    for i in prange(n):
+        dist_sq = np.float32(0.0)
+        for k in range(d):
+            diff = np.float32(x[i, k]) - np.float32(y[i, k])
+            dist_sq += diff * diff
+        out += np.exp(dist_sq * inv_sigma_sq)
+    return out / n
 
 
 @njit(fastmath=True, parallel=True)
@@ -227,7 +238,7 @@ def gaussian_kernel_eval_u(x: NDArray, y: NDArray, sigma: float) -> float:
     return out / (nx * ny)
 
 
-@njit(cache=True, fastmath=True)
+@njit(parallel=True, fastmath=True)
 def gaussian_kernel_eval_diag_standard(x: NDArray, sigma: float) -> float:
     """Estimate `E[k(X,X)]` from samples x using standard sample mean.
 
@@ -240,13 +251,13 @@ def gaussian_kernel_eval_diag_standard(x: NDArray, sigma: float) -> float:
         sigma: bandwidth
     """
     nx, d = x.shape
-    out = 0.0
-    inv_sigma_sq = -1.0 / (sigma * sigma)
+    out = np.float32(0.0)
+    inv_sigma_sq = np.float32(-1.0 / (sigma * sigma))
 
-    for i in range(nx - 1):
-        dist_sq = 0.0
+    for i in prange(nx - 1):
+        dist_sq = np.float32(0.0)
         for k in range(d):
-            diff = x[i, k] - x[i + 1, k]
+            diff = np.float32(x[i, k]) - np.float32(x[i + 1, k])
             dist_sq += diff * diff
         out += np.exp(dist_sq * inv_sigma_sq)
 

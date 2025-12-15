@@ -58,6 +58,7 @@ def bench_standard_f32():
     duration = end - start
     print(f"Took {duration:.4f} seconds")
     # numpy: Took 28.0687 seconds
+    # loop: Took 8.8436 seconds
 
 
 if __name__ == "__main__":
