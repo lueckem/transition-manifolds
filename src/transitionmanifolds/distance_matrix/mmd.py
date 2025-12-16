@@ -25,13 +25,13 @@ class DistanceMatrixGaussianMMD:
 
     Attributes:
         bandwidth: Bandwidth of the Gaussian kernel. If `None`, a reasonable bandwidth is estimated from the data.
-        mode: Either "u-statistic" for quadratic complexity but more precise estimation or "standard" for standard sample mean with linear complexity but less accuracy.
+        mode: Either "v-stat" for quadratic complexity V-statistic with more precise estimation, or "d-stat" for linear complexity sample mean (D-statistic) with less precise estimation.
     """
 
     def __init__(
         self,
         bandwidth: float | None = None,
-        mode: Literal["standard", "u-stat"] = "u-stat",
+        mode: Literal["v-stat", "d-stat"] = "v-stat",
     ):
         self.bandwidth = bandwidth
         self.mode = mode
@@ -44,9 +44,9 @@ class DistanceMatrixGaussianMMD:
         )
 
         d = (
-            compute_kernel_matrix_standard(data.astype(np.float32), self.bandwidth_)
-            if self.mode == "standard"
-            else compute_kernel_matrix_u(data.astype(np.float32), self.bandwidth_)
+            compute_kernel_matrix_d(data.astype(np.float32), self.bandwidth_)
+            if self.mode == "d-stat"
+            else compute_kernel_matrix_v(data.astype(np.float32), self.bandwidth_)
         )
         convert_kernel_to_distance(d)
         return d
@@ -118,10 +118,10 @@ def convert_kernel_to_distance(kernel_matrix: NDArray) -> None:
 
 
 @njit(fastmath=True)
-def compute_kernel_matrix_standard(x_samples: NDArray, sigma: float) -> NDArray:
+def compute_kernel_matrix_d(x_samples: NDArray, sigma: float) -> NDArray:
     """Compute matrix K with `K_ij = E[k(x[i], x[j])]`.
 
-    `K_ij` is estimated via standard sample mean.
+    `K_ij` is estimated via standard sample mean (D-statistic).
     Since K is symmetric, the entries above the diagonal are not filled in and left to be 0.
 
     Args:
@@ -131,14 +131,14 @@ def compute_kernel_matrix_standard(x_samples: NDArray, sigma: float) -> NDArray:
     Returns: kernel matrix with `shape = (num_anchors, num_anchors)`.
     """
     num_anchors = x_samples.shape[0]
-
     kernel_matrix = np.zeros((num_anchors, num_anchors))
+
     for i in range(num_anchors):
-        kernel_matrix[i, i] = gaussian_kernel_eval_diag_standard(x_samples[i], sigma)
+        kernel_matrix[i, i] = gaussian_kernel_eval_diag_d(x_samples[i], sigma)
 
     for i in range(num_anchors):
         for j in range(i):
-            kernel_matrix[i, j] = gaussian_kernel_eval_standard(
+            kernel_matrix[i, j] = gaussian_kernel_eval_d(
                 x_samples[i], x_samples[j], sigma
             )
 
@@ -146,7 +146,7 @@ def compute_kernel_matrix_standard(x_samples: NDArray, sigma: float) -> NDArray:
 
 
 @njit(fastmath=True)
-def compute_kernel_matrix_u(x_samples: NDArray, sigma: float) -> NDArray:
+def compute_kernel_matrix_v(x_samples: NDArray, sigma: float) -> NDArray:
     """Compute matrix K with `K_ij = E[k(x[i], x[j])]`.
 
     `K_ij` is estimated via u-statistic.
@@ -162,11 +162,11 @@ def compute_kernel_matrix_u(x_samples: NDArray, sigma: float) -> NDArray:
     kernel_matrix = np.zeros((num_anchors, num_anchors))
 
     for i in range(num_anchors):
-        kernel_matrix[i, i] = gaussian_kernel_eval_diag_u(x_samples[i], sigma)
+        kernel_matrix[i, i] = gaussian_kernel_eval_diag_v(x_samples[i], sigma)
 
     for i in range(num_anchors):
         for j in range(i):
-            kernel_matrix[i, j] = gaussian_kernel_eval_u(
+            kernel_matrix[i, j] = gaussian_kernel_eval_v(
                 x_samples[i], x_samples[j], sigma
             )
 
@@ -174,7 +174,7 @@ def compute_kernel_matrix_u(x_samples: NDArray, sigma: float) -> NDArray:
 
 
 @njit(fastmath=True, parallel=True)
-def gaussian_kernel_eval_standard(x: NDArray, y: NDArray, sigma: float) -> float:
+def gaussian_kernel_eval_d(x: NDArray, y: NDArray, sigma: float) -> float:
     """Estimate ``E[k(X,Y)]`` from samples x and y using the standard sample mean.
 
     Calculates `1/n Sum_i k(x_i, y_i)`,
@@ -204,7 +204,7 @@ def gaussian_kernel_eval_standard(x: NDArray, y: NDArray, sigma: float) -> float
 
 
 @njit(fastmath=True, parallel=True)
-def gaussian_kernel_eval_u(x: NDArray, y: NDArray, sigma: float) -> float:
+def gaussian_kernel_eval_v(x: NDArray, y: NDArray, sigma: float) -> float:
     """Estimate `E[k(X,Y)]` from samples x and y using the u-statistic.
 
     Calculates ``1/(mn) Sum_{i,j} k(x_i, y_j)``,
@@ -237,12 +237,8 @@ def gaussian_kernel_eval_u(x: NDArray, y: NDArray, sigma: float) -> float:
 
 
 @njit(parallel=True, fastmath=True)
-def gaussian_kernel_eval_diag_standard(x: NDArray, sigma: float) -> float:
+def gaussian_kernel_eval_diag_d(x: NDArray, sigma: float) -> float:
     """Estimate `E[k(X,X)]` from samples x using standard sample mean.
-
-    Calculates `1/(n-1) Sum_i k(x_i, x_{i+1})`,
-    where `k` is the gaussian kernel with bandwidth `sigma`, i.e.,
-    ``k(x_i, y_j) = exp(-||x_i - y_j||^2 / sigma^2)``.
 
     Args:
         x: `shape = (m, d)`
@@ -255,6 +251,7 @@ def gaussian_kernel_eval_diag_standard(x: NDArray, sigma: float) -> float:
     for i in prange(nx - 1):
         dist_sq = np.float32(0.0)
         for k in range(d):
+            # use off-diagonal entries since the diagonal would just yield `1`
             diff = np.float32(x[i, k]) - np.float32(x[i + 1, k])
             dist_sq += diff * diff
         out += np.exp(dist_sq * inv_sigma_sq)
@@ -262,8 +259,8 @@ def gaussian_kernel_eval_diag_standard(x: NDArray, sigma: float) -> float:
     return out / (nx - 1)
 
 
-@njit(fastmath=True, parallel=True)
-def gaussian_kernel_eval_diag_u(x: NDArray, sigma: float) -> float:
+@njit(parallel=True, fastmath=True)
+def gaussian_kernel_eval_diag_v(x: NDArray, sigma: float) -> float:
     """Estimate `E[k(X,X)]` from samples x using the u-statistic.
 
     Args:
@@ -271,7 +268,6 @@ def gaussian_kernel_eval_diag_u(x: NDArray, sigma: float) -> float:
         sigma: bandwidth
     """
     nx, d = x.shape
-
     out = np.float32(0.0)
     inv_sigma_sq = np.float32(-1.0 / (sigma * sigma))
 
@@ -282,7 +278,7 @@ def gaussian_kernel_eval_diag_u(x: NDArray, sigma: float) -> float:
             for k in range(d):
                 diff = np.float32(x[i, k]) - np.float32(x[j, k])
                 dist_sq += diff * diff
-            out_i += np.float32(2.0) * np.exp(dist_sq * inv_sigma_sq)
+            out_i += np.float32(2.0) * np.exp(dist_sq * inv_sigma_sq)  # symmetry
         out += out_i
 
     out += np.float32(nx)  # diagonal entries are all 1

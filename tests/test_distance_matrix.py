@@ -6,8 +6,8 @@ from scipy.spatial.distance import pdist
 from transitionmanifolds import DistanceMatrixGaussianMMD
 from transitionmanifolds.distance_matrix.mmd import (
     convert_kernel_to_distance,
-    gaussian_kernel_eval_standard,
-    gaussian_kernel_eval_u,
+    gaussian_kernel_eval_d,
+    gaussian_kernel_eval_v,
     tune_bandwidth_to_data,
 )
 
@@ -27,8 +27,8 @@ def samples():
 @pytest.mark.parametrize(
     "alg",
     [
-        (DistanceMatrixGaussianMMD(1, "standard")),
-        (DistanceMatrixGaussianMMD(1, "u-stat")),
+        (DistanceMatrixGaussianMMD(1, "v-stat")),
+        (DistanceMatrixGaussianMMD(1, "d-stat")),
         (DistanceMatrixGaussianMMD()),
     ],
 )
@@ -36,6 +36,7 @@ def test_distance_matrix_algorithms(alg, samples):
     distance_matrix = alg(samples)
 
     assert distance_matrix.shape == (6, 6)  # Correct shape
+    assert np.all(distance_matrix >= 0)  # Non-negative entries
     assert np.all(np.diag(distance_matrix) == 0)  # Diagonal 0
     assert np.all(distance_matrix == distance_matrix.T)  # Symmetric
 
@@ -50,7 +51,7 @@ def test_convert_kernel_to_distance():
     assert np.all(kernel_mat == distance_mat)
 
 
-def test_gaussian_kernel_eval_u():
+def test_gaussian_kernel_eval_v():
     x = np.array([[1, 1], [2, 3], [0, -1]], dtype=np.float64)
     y = np.array([[1, 1], [2, 0]], dtype=np.float64)
     sigma = 2.0**0.5
@@ -63,10 +64,10 @@ def test_gaussian_kernel_eval_u():
             [np.exp(-2.5), np.exp(-2.5)],
         ]
     )
-    assert np.allclose(np.mean(kernel), gaussian_kernel_eval_u(x, y, sigma))
+    assert np.allclose(np.mean(kernel), gaussian_kernel_eval_v(x, y, sigma))
 
 
-def test_gaussian_kernel_eval_standard():
+def test_gaussian_kernel_eval_d():
     x = np.array([[1, 1], [2, 3], [0, -1]], dtype=np.float64)
     y = np.array([[1, 1], [2, 0], [1, -1]], dtype=np.float64)
     sigma = 2.0**0.5
@@ -79,7 +80,7 @@ def test_gaussian_kernel_eval_standard():
             np.exp(-0.5),
         ]
     )
-    assert np.allclose(np.mean(kernel), gaussian_kernel_eval_standard(x, y, sigma))
+    assert np.allclose(np.mean(kernel), gaussian_kernel_eval_d(x, y, sigma))
 
 
 def test_tune_bandwidth():
@@ -91,11 +92,11 @@ def test_tune_bandwidth():
 
 def test_convergence_to_0_standard():
     points = np.random.default_rng(123).random((2, 2000, 2))
-    distance_mat = DistanceMatrixGaussianMMD(0.3, "standard")(points)
+    distance_mat = DistanceMatrixGaussianMMD(0.3, "d-stat")(points)
     assert distance_mat[1, 0] < 1e-2
 
 
 def test_convergence_to_0_ustat():
     points = np.random.default_rng(123).random((2, 1000, 2))
-    distance_mat = DistanceMatrixGaussianMMD(0.3, "u-stat")(points)
+    distance_mat = DistanceMatrixGaussianMMD(0.3, "v-stat")(points)
     assert distance_mat[1, 0] < 1e-3

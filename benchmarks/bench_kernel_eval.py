@@ -13,7 +13,7 @@ def print_size(num_anchors, num_samples, d, bytes_per):
     print(f"Size per sample: {bytes_per * d / 10**3} kb")
 
 
-def bench_u_f32():
+def bench_v_f32():
     num_anchors = 200
     num_samples = 400
     d = 1000
@@ -25,10 +25,10 @@ def bench_u_f32():
     x = rng.random((num_anchors, num_samples, d), dtype=np.float32)
 
     # compilation
-    tm.distance_matrix.mmd.compute_kernel_matrix_u(x[:2, :10, :10], sigma)
+    tm.distance_matrix.mmd.compute_kernel_matrix_v(x[:2, :10, :10], sigma)
 
     start = perf_counter()
-    k = tm.distance_matrix.mmd.compute_kernel_matrix_u(x, sigma)
+    k = tm.distance_matrix.mmd.compute_kernel_matrix_v(x, sigma)
     end = perf_counter()
     print(k[1, 0])
     duration = end - start
@@ -37,7 +37,7 @@ def bench_u_f32():
     # loop: Took 33.9371 seconds
 
 
-def bench_standard_f32():
+def bench_d_f32():
     num_anchors = 400
     num_samples = 400
     d = 2000
@@ -49,10 +49,10 @@ def bench_standard_f32():
     x = rng.random((num_anchors, num_samples, d), dtype=np.float32)
 
     # compilation
-    tm.distance_matrix.mmd.compute_kernel_matrix_standard(x[:2, :10, :10], sigma)
+    tm.distance_matrix.mmd.compute_kernel_matrix_d(x[:2, :10, :10], sigma)
 
     start = perf_counter()
-    k = tm.distance_matrix.mmd.compute_kernel_matrix_standard(x, sigma)
+    k = tm.distance_matrix.mmd.compute_kernel_matrix_d(x, sigma)
     end = perf_counter()
     print(k[1, 0])
     duration = end - start
@@ -62,5 +62,5 @@ def bench_standard_f32():
 
 
 if __name__ == "__main__":
-    # bench_u_f32()
-    bench_standard_f32()
+    bench_v_f32()
+    bench_d_f32()
