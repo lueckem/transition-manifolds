@@ -46,8 +46,8 @@ num_coords = 3  # 3-dimensional embedding
 coords = diffusion_maps(distance_matrix, num_coords)  # shape = (num_anchors, num_coords)
 ```
 
-Note that additional information about the computations are stored as class fields, see the documentation for each algorithm.
-For example, the bandwidth used in the diffusion maps computation is accesible via `diffusion_maps.bandwidth_`.
+Note that additional information about the computations is stored as class fields, see the documentation for each algorithm.
+For example, the bandwidth used in the diffusion maps computation is accessible via `diffusion_maps.bandwidth_`.
 
 Both steps can be executed at once using the convenience function `compute_transition_manifold`:
 ```python
