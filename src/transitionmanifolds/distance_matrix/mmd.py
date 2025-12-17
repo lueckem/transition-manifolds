@@ -149,7 +149,7 @@ def compute_kernel_matrix_d(x_samples: NDArray, sigma: float) -> NDArray:
 def compute_kernel_matrix_v(x_samples: NDArray, sigma: float) -> NDArray:
     """Compute matrix K with `K_ij = E[k(x[i], x[j])]`.
 
-    `K_ij` is estimated via u-statistic.
+    `K_ij` is estimated via v-statistic.
     Since K is symmetric, the entries above the diagonal are not filled in and left to be 0.
 
     Args:
@@ -205,7 +205,7 @@ def gaussian_kernel_eval_d(x: NDArray, y: NDArray, sigma: float) -> float:
 
 @njit(fastmath=True, parallel=True)
 def gaussian_kernel_eval_v(x: NDArray, y: NDArray, sigma: float) -> float:
-    """Estimate `E[k(X,Y)]` from samples x and y using the u-statistic.
+    """Estimate `E[k(X,Y)]` from samples x and y using the v-statistic.
 
     Calculates ``1/(mn) Sum_{i,j} k(x_i, y_j)``,
     where `k` is the gaussian kernel with bandwidth `sigma`, i.e.,
@@ -261,7 +261,7 @@ def gaussian_kernel_eval_diag_d(x: NDArray, sigma: float) -> float:
 
 @njit(parallel=True, fastmath=True)
 def gaussian_kernel_eval_diag_v(x: NDArray, sigma: float) -> float:
-    """Estimate `E[k(X,X)]` from samples x using the u-statistic.
+    """Estimate `E[k(X,X)]` from samples x using the v-statistic.
 
     Args:
         x: `shape = (m, d)`
