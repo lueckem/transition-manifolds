@@ -44,9 +44,9 @@ class DistanceMatrixGaussianMMD:
         )
 
         d = (
-            compute_kernel_matrix_d(data.astype(np.float32), self.bandwidth_)
+            compute_kernel_matrix_d(data, self.bandwidth_)
             if self.mode == "d-stat"
-            else compute_kernel_matrix_v(data.astype(np.float32), self.bandwidth_)
+            else compute_kernel_matrix_v(data, self.bandwidth_)
         )
         convert_kernel_to_distance(d)
         return d
