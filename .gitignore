@@ -8,3 +8,13 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pkl
+*.npy
+*.npz
+*.pdf

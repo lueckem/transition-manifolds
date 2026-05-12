@@ -8,8 +8,12 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "joblib>=1.5.3",
+    "matplotlib>=3.10.9",
     "numba>=0.62.1",
     "numpy>=2.3.5",
+    "pot>=0.9.6.post1",
+    "scikit-learn>=1.8.0",
     "scipy>=1.16.3",
 ]
 
