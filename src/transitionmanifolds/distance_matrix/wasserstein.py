@@ -27,10 +27,10 @@ class DistanceMatrixWasserstein:
 
     def __init__(
         self,
-        regularize : bool | None = None,
-        reg_factor: float | None = None,
-        reg_type: str | None = None,
-        n_jobs: int | None = None
+        regularize : bool | None = True,
+        reg_factor: float | None = 0.1,
+        reg_type: str | None = 'KL',
+        n_jobs: int | None = -1
     ):
         self.regularize = regularize
         self.reg_factor = reg_factor

@@ -1,19 +1,10 @@
 import numpy as np
 import pytest
 from numpy.random import default_rng
-# from scipy.spatial.distance import pdist
-
-# from transitionmanifolds import DistanceMatrixGaussianMMD
-# from transitionmanifolds.distance_matrix.mmd import (
-#     convert_kernel_to_distance,
-#     gaussian_kernel_eval_d,
-#     gaussian_kernel_eval_v,
-#     tune_bandwidth_to_data,
-# )
 
 from transitionmanifolds import DistanceMatrixWasserstein
 # from transitionmanifolds.distance_matrix.wasserstein import(
-#     # TODO: Sonstige Funktionen die in Zukunft getestet werden sollen
+#     # Future: Sonstige Funktionen die in Zukunft getestet werden sollen
 # )
 
 
